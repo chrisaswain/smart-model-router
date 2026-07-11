@@ -1,0 +1,399 @@
+# Smart Model Router
+
+Route tasks to the cheapest/fastest model that can handle them well — across Claude tiers **and** external providers (OpenAI Codex/GPT-5.6, SpaceXAI Grok, Google Gemini). **Claude Sonnet 5 is the default working tier**; the current session (Opus) classifies work, delegates simpler tasks down (Haiku), escalates hard tasks up (Opus 4.8 → Fable 5), and dispatches specific jobs to external providers via the Multi-Provider Lane. Every routing decision is logged for periodic self-improvement review.
+
+> **Model roster (2026-07):** Claude Fable 5 / Opus 4.8 / Sonnet 5 / Haiku 4.5 · GPT-5.6 Sol/Terra/Luna · Grok 4.5 · Gemini 3.1 Pro / 3 Flash / Flash-Lite. Full capability rows, access paths, and guard rails are in the `ai-registry` skill. Rebalanced 2026-07-11 after a four-model peer review.
+
+## Invocation
+
+- **Automatic:** This skill's routing logic applies passively during normal work. When Opus detects a delegatable task, it suggests or auto-delegates based on complexity.
+- **Direct:** `/smart-route <prompt>` — explicitly route a task through the model selector
+- **Review:** `/smart-route review` — analyze the performance log and produce improvement recommendations
+- **Stats:** `/smart-route stats` — show routing statistics summary
+
+## Task Classification
+
+Classify every delegatable task into one of three tiers:
+
+### Tier 1 — Haiku 4.5 (simple, pattern-matching, retrieval)
+
+Cost: ~$1/M input, ~$5/M output — **5x cheaper than Opus 4.8 output** *(corrected 2026-07-11; the old $0.25/$1.25 was stale Haiku-3 pricing)*
+
+| Task Pattern | Examples |
+|---|---|
+| File content retrieval | "What's in config.json?", "Show me the imports in app.tsx" |
+| Simple grep/find | "Find all files that import X", "Where is Y defined?" |
+| Basic formatting/transformation | "Convert this list to a markdown table", "Reformat this JSON" |
+| Simple enumeration | "List all routes in this app", "What env vars does this use?" |
+| Straightforward Q&A (lookup) | "What version of React is this using?", "What's the default port?" |
+| Status checks | "Is there a lock file?", "What branch am I on?" |
+| Simple text transforms | "Convert camelCase to snake_case in these names", "Sort these alphabetically" |
+| Template generation | "Generate a basic .gitignore for Python", "Scaffold a test file" |
+
+### Tier 2 — Sonnet 5 (the DEFAULT working tier — moderate-to-strong reasoning)
+
+Cost: ~$3/M input, ~$15/M output (intro $2/$10 through Aug 31, 2026) — **~1.7x cheaper than Opus 4.8 output**
+
+**Rebalanced 2026-07-11 (post 4-model peer review):** Sonnet 5 is now the **default** for coding, PR review, and planning — not just Tier-2 delegation. It clears most agentic coding work (~82% SWE-Verified); reserve Opus 4.8 for merge-critical / hard multi-file / orchestration, and Fable 5 for budget-gated ceiling cases. "Opus by default" is cost-uncalibrated.
+
+| Task Pattern | Examples |
+|---|---|
+| Document summarization | "Summarize this README", "Give me the key points from this file" |
+| Test case writing | "Write unit tests for this function", "Add test coverage for this module" |
+| PR/commit message drafting | "Draft a PR description for these changes" |
+| Multi-file exploration | "How does the auth flow work across these files?" |
+| Moderate refactoring | "Rename this variable across the file", "Extract this into a helper" |
+| Documentation generation | "Generate JSDoc for these functions", "Write API docs for this endpoint" |
+| Data analysis (simple) | "Parse this CSV and show top 10 by revenue" |
+| Translation/localization | "Translate these UI strings to Spanish" |
+| Boilerplate code generation | "Create a CRUD API for this model", "Scaffold a React component" |
+| Dependency analysis | "What does this package do? Should we keep it?" |
+
+### Tier 3 — Opus 4.8 / Fable 5 (escalation tier — hardest work)
+
+*Escalate here from the Sonnet-5 default when a task hits these patterns. Opus 4.8 for hard multi-file / orchestration / merge-critical / security; **Fable 5** for budget-gated ceiling cases only. Not a "stay put" tier — it's where the default escalates TO.*
+
+| Task Pattern | Why Opus |
+|---|---|
+| Architectural decisions | Requires judgment, tradeoff analysis, full project context |
+| Complex debugging | Multi-step reasoning, hypothesis testing |
+| Multi-file refactoring with design decisions | Needs to understand intent, not just pattern-match |
+| Nuanced writing with specific voice/tone | Claude Opus produces distinctly better prose |
+| Code review with judgment calls | Ambiguity handling, risk assessment |
+| Agentic multi-step workflows | Orchestration, tool chaining, error recovery |
+| Tasks requiring full conversation context | Agent doesn't get prior conversation history |
+| Security-sensitive analysis | Needs careful, thorough reasoning |
+| Anything the user is actively collaborating on | Context continuity matters |
+
+## Multi-Provider Lane (external CLIs + Gemini) — added 2026-07-11
+
+Beyond the Claude tiers, three external providers are callable locally and can be routed for specific jobs. See `ai-registry` for full capability rows. **Log each with a `provider` field.**
+
+### The rebalanced default ladder
+
+1. **Classify / extract / bulk** → Gemini Flash-Lite (MCP) or Haiku 4.5
+2. **Well-specified coding w/ tests** → Grok 4.5 (`grok.exe`) or GPT-5.6 Luna (`codex exec -m gpt-5.6-luna`)
+3. **Default agentic coding / review / planning** → **Claude Sonnet 5**
+4. **Hard multi-file / orchestration / merge-critical** → Claude Opus 4.8
+5. **Known ceiling cases** (budget-gated) → Claude Fable 5 (Agent `model: fable`)
+6. **Long-context corpus, READ path only** → Gemini 3.1 Pro (API/console; MCP exposes only 2.5)
+7. **Long terminal agents, sandboxed** → GPT-5.6 Sol (`codex exec -m gpt-5.6-sol`)
+
+### How to invoke externally
+
+- **Grok:** `~/.grok/bin/grok.exe -p "<self-contained prompt>" --model grok-4.5 --output-format json` → parse `.text`.
+- **Codex/GPT-5.6:** pipe prompt via **stdin** (`Get-Content prompt | codex exec -m <model> -s read-only --skip-git-repo-check -o out.txt`); passing the prompt as an arg while stdin is open can hang.
+- **Gemini:** `mcp__gemini__generate_text` (MCP is 2.5-family today) or research MCPs.
+
+### Guardrails (non-negotiable — from the peer-reviewed report)
+
+- **Style-locked content** (specialized agents with a locked voice, methodology, or brand — domain-expert advisors, brand-voice writers, calibrated analysts) → **keep on the incumbent model, org policy.** Never route out. (See your capability registry's style-locked agent list.)
+- **Trading / execution code** → Claude only + **model-independent controls** (deterministic tests, look-ahead-bias checks, paper-trading, human approval). No model — Claude included — gets unsupervised live-order authority.
+- **Grok output → risk-tiered verify:** route money/security/prod paths through a Claude gate; trust tests for throwaway scripts. Blanket "always verify" pays two models and erases the cost win.
+- **Sandbox EVERY autonomous agent** (Sol, Grok, Claude) — no unsupervised network + secrets. METR flagged Sol for in-scaffold reward-hacking → keep Sol off gating CI specifically.
+- **Availability check:** GPT-5.6 Sol may be partner-preview; confirm access before routing to it. Gemini 3.1 Pro needs API/console (not the current MCP).
+
+## Delegation Protocol
+
+### When to auto-delegate (no suggestion needed)
+
+Auto-delegate to a subagent when ALL of these are true:
+1. The task clearly falls into Tier 1 or Tier 2
+2. The task is self-contained (doesn't need prior conversation context)
+3. The task output can be verified at a glance
+4. The user hasn't indicated they want Opus-level attention on this
+
+### When to suggest delegation
+
+Suggest delegation when:
+- The task is borderline Tier 2/3
+- The task is large but could be parallelized across cheaper agents
+- The user is doing bulk work where cost matters
+
+Suggestion format:
+```
+> This looks like a Tier {1|2} task — I can delegate to {Haiku|Sonnet} to save tokens. Want me to route it?
+```
+
+### When to NEVER delegate
+
+- The user explicitly said `/smart-route opus` or similar
+- The task involves secrets, credentials, or security review
+- The task is part of an active back-and-forth dialogue
+- The output will be shown directly to someone else (PR comments, messages, etc.)
+- The user previously escalated a similar task from a cheaper model
+
+## Execution Steps
+
+### Step 1: Classify
+
+Determine the tier using the tables above. When uncertain, default UP (Sonnet over Haiku, Opus over Sonnet).
+
+### Step 2: Delegate
+
+Spawn an Agent with the appropriate model:
+
+```
+Agent({
+  description: "<short task description>",
+  model: "haiku",  // or "sonnet"
+  prompt: "<self-contained task prompt with all needed context>"
+})
+```
+
+**Critical:** The agent has NO conversation history. The prompt must be fully self-contained:
+- Include file paths to read
+- Include the specific question or task
+- Include expected output format
+- Include any constraints or preferences
+
+### Step 3: Quality gate
+
+When the agent returns, do a quick quality check before presenting to the user:
+- Does the output actually answer the question?
+- Is the output format correct?
+- Are there obvious errors or hallucinations?
+- For code: does it look syntactically correct?
+
+If quality is insufficient:
+1. Log an escalation event
+2. Either fix it yourself (Opus) or re-delegate to the next tier up
+3. Note the task pattern for future routing adjustments
+
+### Step 4: Present with attribution
+
+**MANDATORY — always show which model handled the work:**
+
+```markdown
+> **[Claude {Model}]** — {brief reason for model choice}
+
+{output}
+```
+
+Examples:
+```markdown
+> **[Claude Haiku]** — simple file lookup
+
+The config uses port 3000 with...
+```
+
+```markdown
+> **[Claude Sonnet]** — test generation
+
+Here are the unit tests for `calculateTotal()`...
+```
+
+If escalation happened:
+```markdown
+> **[Claude Sonnet → Opus]** — escalated: output needed refinement
+
+{improved output}
+```
+
+### Step 5: Log the decision
+
+Append a JSON line to the routing log (see Performance Tracking below).
+
+## Performance Tracking
+
+### Log Location
+
+`logs/routing-log.jsonl`
+
+### Log Format
+
+Each routing decision appends one JSON line:
+
+```json
+{
+  "ts": "2026-05-24T11:30:00Z",
+  "task_type": "file_lookup|summarization|test_writing|exploration|...",
+  "task_summary": "Find all React imports in src/",
+  "model_selected": "haiku",
+  "model_escalated_to": null,
+  "escalation_reason": null,
+  "outcome": "success|escalated|failed",
+  "user_feedback": null,
+  "tokens_estimated": 1500,
+  "notes": ""
+}
+```
+
+### Logging Rules
+
+- Log EVERY routed task (not Opus-stays tasks — those are the default)
+- If the user corrects or rejects output, update `user_feedback` to `"rejected"` and note why
+- If the user accepts without comment, `user_feedback` stays `null` (implicit success)
+- If the user says "nice" / "perfect" / "good", set `user_feedback` to `"positive"`
+- If escalation occurs, record both `model_selected` and `model_escalated_to`
+
+### Writing the Log
+
+Use a Bash append to write each log entry:
+
+```bash
+echo '{"ts":"...","task_type":"...","model_selected":"...","outcome":"..."}' >> logs/routing-log.jsonl
+```
+
+### Auto-Review Trigger
+
+After every log write, count the total entries:
+
+```bash
+wc -l < logs/routing-log.jsonl
+```
+
+**Auto-trigger a review when the count hits a milestone:**
+
+| Entry Count | Action |
+|---|---|
+| 25 | Run a **mini-review** — just escalation rates and any obvious problems. One paragraph, inline. |
+| 50 | Run **full review** (same as `/smart-route review`). Present findings + recommendations. |
+| 100, 200, 500, ... | Run **full review** at every doubling/milestone after 50. |
+
+The review runs inline — no user action needed. Present findings and ask for approval before applying any routing rule changes.
+
+If the last review was within 25 entries of the current count (e.g., manual `/smart-route review` was just run), skip the auto-trigger to avoid redundancy.
+
+Track the last auto-review count in the log itself:
+```json
+{"ts":"...","task_type":"meta_auto_review","model_selected":"opus","outcome":"success","notes":"auto-review at 50 entries"}
+```
+
+## Self-Improvement Review (`/smart-route review`)
+
+When invoked, read the full routing log and produce an analysis:
+
+### Step 1: Load data
+
+```bash
+cat logs/routing-log.jsonl
+```
+
+### Step 2: Compute metrics
+
+| Metric | Formula |
+|---|---|
+| **Total routed** | Count of all log entries |
+| **Haiku usage** | Count where model_selected = haiku |
+| **Sonnet usage** | Count where model_selected = sonnet |
+| **Escalation rate (Haiku)** | Escalated from haiku / Total haiku |
+| **Escalation rate (Sonnet)** | Escalated from sonnet / Total sonnet |
+| **User rejection rate** | user_feedback = rejected / Total |
+| **Estimated token savings** | Sum of (opus_cost - actual_cost) for all delegated tasks |
+| **Top escalation patterns** | Group escalated tasks by task_type, find recurring patterns |
+
+### Step 3: Produce recommendations
+
+Based on the data, recommend routing rule changes:
+
+- **High escalation rate for a task type (>25%):** "Move `{task_type}` from Tier {N} to Tier {N+1}"
+- **Zero escalations for a task type (50+ samples):** "Task `{task_type}` is well-placed at Tier {N}"
+- **User rejections concentrated on a model:** "Increase quality threshold for `{model}` delegation"
+- **Task types never delegated that could be:** "Consider delegating `{task_type}` — appears simple enough for Tier {N}"
+
+### Step 4: Apply recommendations
+
+If recommendations involve routing rule changes:
+
+1. Present the findings to the user
+2. If approved, update this SKILL.md with the adjusted task-type classifications
+3. Log the rule change in the routing log with `task_type: "meta_rule_change"`
+
+### Step 5: Output format
+
+```markdown
+## Model Router Performance Review
+
+**Period:** {earliest_ts} to {latest_ts}
+**Total tasks routed:** {N}
+
+### Routing Distribution
+- Haiku: {N} ({%})
+- Sonnet: {N} ({%})
+- Stayed on Opus: (not tracked — default path)
+
+### Escalation Rates
+- Haiku → Sonnet/Opus: {N}/{total_haiku} ({%})
+- Sonnet → Opus: {N}/{total_sonnet} ({%})
+
+### Top Escalation Patterns
+1. {task_type}: {count} escalations — **Recommendation:** {move up / investigate / OK}
+2. ...
+
+### Estimated Token Savings
+- Delegated {N} tasks that would have cost ~{X} on Opus
+- Actual cost on cheaper models: ~{Y}
+- **Net savings: ~{Z} tokens ({%} reduction)**
+
+### Recommendations
+1. {recommendation}
+2. {recommendation}
+```
+
+## Stats Summary (`/smart-route stats`)
+
+Quick one-liner stats from the log:
+
+```markdown
+**Model Router:** {N} tasks routed | Haiku: {N} | Sonnet: {N} | Escalations: {N} ({%}) | Est. savings: ~{N} tokens
+```
+
+## Parallel Delegation
+
+For tasks that can be broken into independent subtasks, spawn multiple agents in parallel:
+
+```
+Example: "Summarize these 5 files"
+→ Spawn 5 Haiku agents in parallel, one per file
+→ Collect results and present together
+```
+
+This is where the biggest speed + cost wins happen. Look for opportunities to parallelize:
+- Multi-file operations
+- Batch lookups
+- Independent subtasks within a larger request
+
+## Experimentation Decision Points
+
+When `global_experiment_mode` is enabled in `C:\Dev\ai\logs\ai-router\preferences.json`:
+
+### Tier classification prompt
+
+When auto-delegating, show the decision:
+
+```markdown
+> [Model Router — Decision Point]
+> Task: "{task_summary}"
+> Classification: Tier {N} ({model})
+> A (Recommended): Claude {model} ({reasoning}, {cost_savings})
+> B: Claude {alternative} ({tradeoff})
+> C: Claude Opus (stay, best quality, highest cost)
+> D: Compare {model} vs. Opus
+```
+
+### Quality check after delegation
+
+After the delegated agent returns output, prompt:
+```
+> Quality check: Does this meet expectations? (yes / no / compare / lock)
+```
+
+- **yes** — log as successful delegation
+- **no** — regenerate with Opus, log as failed experiment
+- **compare** — generate with Opus side-by-side, user picks winner
+- **lock** — save this tier as permanent preference for this task type
+
+### Experiment logging
+
+Log all experiments to `C:\Dev\ai\logs\ai-router\experiments.jsonl` with `router: "smart-route"`.
+
+When experimentation is OFF (default), auto-delegation works as before — no decision prompts. The existing auto-delegate behavior (classify + delegate silently) remains the default to preserve speed.
+
+## Edge Cases
+
+- **Agent fails entirely** (crash, timeout): Fall back to Opus, log as `outcome: "failed"`
+- **Ambiguous tier**: Default UP. It's better to overspend slightly than deliver poor quality.
+- **User says "use Opus for everything"**: Respect it. Save as a feedback memory and stop delegating for the session.
+- **Very short tasks** (< 3 tool calls expected): Do it yourself on Opus. Agent overhead isn't worth it.
+- **Tasks requiring file writes/edits**: Always Sonnet minimum. Haiku should only read, never write.
