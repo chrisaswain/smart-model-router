@@ -79,6 +79,18 @@ Beyond the Claude tiers, three external providers are callable locally and can b
 6. **Long-context corpus, READ path only** → Gemini 3.1 Pro (API/console; MCP exposes only 2.5)
 7. **Long terminal agents, sandboxed** → GPT-5.6 Sol (`codex exec -m gpt-5.6-sol`)
 
+### 🟢 Measure it on your own code (personalized benchmark)
+
+Vendor "best coder" rankings can invert on *your* actual code. A companion approach — mine your own private repo into coding tasks (a commit that changed source+tests becomes a task: revert to the parent, hand the model the failing tests as the spec, grade by whether they pass in an isolated worktree) — lets you measure which model actually solves your kind of work, and at what cost.
+
+A first run of this method on a private codebase (N=6 "fix multi-file changes in tested code" tasks × 2 attempts) found **all four models solved 100%** — Sonnet 5, Opus 4.8, GPT-5.6 Sol, Grok 4.5. When capability ties on a task class, **route by cost/speed, not by leaderboard**:
+
+- **Grok 4.5** — free on subscription + fastest (~73s/task)
+- **Sonnet 5** — cheapest paid (~$0.95/solved, list)
+- **Opus 4.8** (~$1.21) and **GPT-5.6 Sol** (~$2.03) — no measured capability edge on this class → overpay
+
+**Lesson:** don't reach for the premium model when a cheap/fast one measurably ties it *on your work*. Caveat: an all-100% result measures competence + cost, not the capability ceiling — harder/greenfield tasks discriminate capability. Scope: fixing multi-file changes in tested code.
+
 ### How to invoke externally
 
 - **Grok:** `~/.grok/bin/grok.exe -p "<self-contained prompt>" --model grok-4.5 --output-format json` → parse `.text`.
