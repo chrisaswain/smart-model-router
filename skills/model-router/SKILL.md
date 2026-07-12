@@ -85,6 +85,13 @@ Beyond the Claude tiers, three external providers are callable locally and can b
 - **Codex/GPT-5.6:** pipe prompt via **stdin** (`Get-Content prompt | codex exec -m <model> -s read-only --skip-git-repo-check -o out.txt`); passing the prompt as an arg while stdin is open can hang.
 - **Gemini:** `mcp__gemini__generate_text` (MCP is 2.5-family today) or research MCPs.
 
+### Media & voice (Gemini TTS)
+
+For narration / text-to-speech, route to **Gemini TTS** via a `gemini-media` MCP server (`generate_audio`):
+- Model **`gemini-2.5-flash-preview-tts`**; default voice **`Charon`** (30 prebuilt voices; params `voiceName`, `languageCode`, `prompt`).
+- Output is raw PCM (s16le, 24kHz, mono) → convert with `ffmpeg -f s16le -ar 24000 -ac 1 -i voice.pcm voice.wav`.
+- **Steer delivery with prose + punctuation, not bracket tags** — `[pause]`/`[emphasis]`-style tags are inert on this model (unlike ElevenLabs, where they're honored). This is the default TTS lane; fall back to local/system TTS only if Gemini is unavailable.
+
 ### Guardrails (non-negotiable — from the peer-reviewed report)
 
 - **Style-locked content** (specialized agents with a locked voice, methodology, or brand — domain-expert advisors, brand-voice writers, calibrated analysts) → **keep on the incumbent model, org policy.** Never route out. (See your capability registry's style-locked agent list.)
