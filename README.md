@@ -7,11 +7,23 @@ Ships the `model-router` skill plus an interactive, peer-reviewed model-comparis
 ## Contents
 
 ```
-skills/model-router/SKILL.md   # /smart-route — tiered + multi-provider routing, guardrails, self-review
-report/model-comparison.html   # interactive Claude/Codex/Grok/Gemini comparison (self-contained, offline)
+skills/model-router/SKILL.md      # /smart-route — operating modes + tiered/multi-provider routing, guardrails
+skills/model-router/routing-table.json  # de-identified measured baseline the operating modes select over
+report/model-comparison.html      # interactive Claude/Codex/Grok/Gemini comparison (self-contained, offline)
 ```
 
-## The routing ladder (July 2026)
+## Operating modes
+
+Pick one objective; **Balanced is the default**:
+
+- **Frugal** — cheapest model that clears the quality bar.
+- **Fast** — lowest measured latency that clears the bar.
+- **Balanced** — cheapest within a tolerance of the best (CI-aware); the sensible default.
+- **Deep** — the capability ceiling.
+
+Modes select over a **measured routing table** (`routing-table.json`), produced by the companion benchmark [route-proof](https://github.com/chrisaswain/route-proof). This repo ships a **de-identified reference baseline** (real metrics from one run, identity removed) so the modes work out of the box; regenerate your own for your stack. The guardrail layer always runs first, thin/unmeasured data falls back to the heuristic ladder, and a **measured tie is surfaced to you to choose** rather than broken arbitrarily. Full rules in `skills/model-router/SKILL.md` → **Operating Modes**.
+
+## The routing ladder (fallback)
 
 Cheapest tier that clears the bar; escalate on complexity signals:
 
