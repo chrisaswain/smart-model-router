@@ -25,7 +25,7 @@ The router runs in one of four **operating modes** — an objective for *how* to
 
 ### Order of operations (every route)
 
-1. **Guardrail layer FIRST — overrides everything.** Before any measured data: style-locked / brand-voice → incumbent model (org policy); trading / execution / regulated code → incumbent + model-independent controls; autonomous agent → sandboxed. A guardrail wins regardless of mode or table.
+1. **Guardrail layer FIRST — overrides everything.** Before any measured data: style-locked / brand-voice → incumbent model (org policy); autonomous agent → sandboxed. A guardrail wins regardless of mode or table. Trading / execution / regulated code is routed normally by capability/cost (not pinned to a provider by default); the separate **execution-safety floor** (no unsupervised live-order authority) always holds regardless of author.
 2. **Consult the measured table** for the task's work-type under the active mode's rule.
 3. **Resolve:**
    - **Single clear winner** (clears the confidence floor) → route; attribute with the mode + evidence.
@@ -146,7 +146,7 @@ For narration / text-to-speech, route to **Gemini TTS** via a `gemini-media` MCP
 **This is the guardrail layer — it runs FIRST on every route (step 1 of Operating Modes) and overrides any measured/mode selection.**
 
 - **Style-locked content** (specialized agents with a locked voice, methodology, or brand — domain-expert advisors, brand-voice writers, calibrated analysts) → **keep on the incumbent model, org policy.** Never route out. (See your capability registry's style-locked agent list.)
-- **Trading / execution code** → Claude only + **model-independent controls** (deterministic tests, look-ahead-bias checks, paper-trading, human approval). No model — Claude included — gets unsupervised live-order authority.
+- **Trading / execution code** — **authorship is not provider-restricted by default:** any model may write trading code (routed by the normal mode/table logic), on the principle that an independent adversarial review + verification contracts catch defects regardless of author. Orgs with IP-retention constraints may optionally pin it to the incumbent. **The execution-safety floor is always retained and non-negotiable:** model-independent controls (deterministic tests, look-ahead-bias checks, paper-trading, human approval), and no model gets unsupervised live-order authority.
 - **Grok output → risk-tiered verify:** route money/security/prod paths through a Claude gate; trust tests for throwaway scripts. Blanket "always verify" pays two models and erases the cost win.
 - **Sandbox EVERY autonomous agent** (Sol, Grok, Claude) — no unsupervised network + secrets. METR flagged Sol for in-scaffold reward-hacking → keep Sol off gating CI specifically.
 - **Availability check:** GPT-5.6 Sol may be partner-preview; confirm access before routing to it. Gemini 3.1 Pro needs API/console (not the current MCP).
