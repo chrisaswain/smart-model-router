@@ -10,6 +10,40 @@ Route tasks to the cheapest/fastest model that can handle them well — across C
 - **Direct:** `/smart-route <prompt>` — explicitly route a task through the model selector
 - **Review:** `/smart-route review` — analyze the performance log and produce improvement recommendations
 - **Stats:** `/smart-route stats` — show routing statistics summary
+- **Mode:** `/smart-route --mode frugal|fast|balanced|deep <task>` — set the operating mode (default **Balanced**). Plain language works too ("use fast mode"). See **Operating Modes** below.
+
+## Operating Modes
+
+The router runs in one of four **operating modes** — an objective for *how* to choose among capable models for a task's work-type. Set per session/task; **Balanced is the default**. Modes select over a measured routing table (`routing-table.json` in this skill's directory — this repo ships a **de-identified reference baseline**; regenerate your own with [route-proof](https://github.com/chrisaswain/route-proof) for your stack). The tiers/ladder below are the fallback when the table is thin.
+
+| Mode | Optimizes | Rule over the measured table | internal |
+|---|---|---|---|
+| **Frugal** | lowest $ cost | cheapest model whose pass@k clears the work-type quality bar | `thrift` |
+| **Fast** | lowest latency | lowest measured **median** wall-time clearing the bar | `fast` |
+| **Balanced** (default) | quality-per-cost | cheapest model within δ of the best whose **CI-low** clears the bar | `balanced` |
+| **Deep** | capability ceiling | highest measured pass@k (see saturation note) | `max` |
+
+### Order of operations (every route)
+
+1. **Guardrail layer FIRST — overrides everything.** Before any measured data: style-locked / brand-voice → incumbent model (org policy); trading / execution / regulated code → incumbent + model-independent controls; autonomous agent → sandboxed. A guardrail wins regardless of mode or table.
+2. **Consult the measured table** for the task's work-type under the active mode's rule.
+3. **Resolve:**
+   - **Single clear winner** (clears the confidence floor) → route; attribute with the mode + evidence.
+   - **Measured tie** — 2+ candidates the mode can't separate (Deep: equal pass@k, overlapping CIs; Frugal/Balanced: equal cost, e.g. several subscription-free models; Fast: near-equal median latency) → **never pick arbitrarily.** Present the tied candidates to the user and route to their choice; record it in your preference store so you don't re-ask.
+   - **Below the confidence floor / no cell** (too few tasks, wide CI, low-validity judge) → **fall back to the heuristic ladder** below.
+
+### Thresholds & tie detection
+
+Compute candidates/ties from the table cells with these values (they match route-proof's engine). `routing-table.pr.md`, if present, is a human-readable evidence snapshot (non-runtime).
+
+- **Quality bar** (pass@k): **0.5**.
+- **Balanced band** δ: **0.10** (within 0.10 pass@k of the best AND CI-low ≥ 0.5).
+- **Confidence floor:** a cell auto-routes only if N ≥ **3** tasks AND Wilson CI width ≤ **0.6 × validity**; below → heuristic ladder.
+- **Tie margins:** Frugal/Balanced = candidates at the same minimum cost; Fast = within **15%** of the fastest median latency; Deep = top pass@k AND tightest CI-low (best-evidenced ceiling). If a tie set exceeds 4, present the most distinct 3-4 (fastest / mid / premium) plus "other".
+
+### Deep mode + measured saturation
+
+When tasks saturate (the top models tie at ~100% with overlapping CIs — as coding does in the shipped baseline), `max` can't separate them; that's a tie → Deep prompts rather than guessing, or escalates via the ladder if you decline. Deep's measured ceiling isn't established for saturated work-types until a harder-task run exists.
 
 ## Task Classification
 
@@ -71,6 +105,8 @@ Beyond the Claude tiers, three external providers are callable locally and can b
 
 ### The rebalanced default ladder
 
+**This ladder is the FALLBACK** — used when the measured table has no confident cell for the (work-type, mode) (below the confidence floor, or unmeasured). When the table has a confident cell, the active operating mode's selection over it takes precedence (see **Operating Modes**).
+
 1. **Classify / extract / bulk** → Gemini Flash-Lite (MCP) or Haiku 4.5
 2. **Well-specified coding w/ tests** → Grok 4.5 (`grok.exe`) or GPT-5.6 Luna (`codex exec -m gpt-5.6-luna`)
 3. **Default agentic coding / review / planning** → **Claude Sonnet 5**
@@ -83,13 +119,14 @@ Beyond the Claude tiers, three external providers are callable locally and can b
 
 Vendor "best coder" rankings can invert on *your* actual code. A companion approach — mine your own private repo into coding tasks (a commit that changed source+tests becomes a task: revert to the parent, hand the model the failing tests as the spec, grade by whether they pass in an isolated worktree) — lets you measure which model actually solves your kind of work, and at what cost.
 
-A first run of this method on a private codebase (N=6 "fix multi-file changes in tested code" tasks × 2 attempts) found **all four models solved 100%** — Sonnet 5, Opus 4.8, GPT-5.6 Sol, Grok 4.5. When capability ties on a task class, **route by cost/speed, not by leaderboard**:
+A **full-matrix reference run** (5 coding task types + answer-path work-types × the model roster) is shipped here as `routing-table.json` (de-identified real metrics — the operating modes select over it). Headline findings:
 
-- **Grok 4.5** — free on subscription + fastest (~73s/task)
-- **Sonnet 5** — cheapest paid (~$0.95/solved, list)
-- **Opus 4.8** (~$1.21) and **GPT-5.6 Sol** (~$2.03) — no measured capability edge on this class → overpay
+- **Coding capability saturates** — several Claude tiers and both Grok models all solve 100% — so route by cost/speed. **Fast → the fastest coder** (a Grok tier, ~2 min/task); Frugal/Balanced tie among the subscription-free models → prompt the user to pick.
+- **Gemini fails agentic coding** in patch-gen mode (can't do multi-file features) but **aces answer-path** (reasoning / extraction / grounded-QA) — route it to Q&A, not large agentic coding.
+- **Cheaper isn't monotonically worse and pricier isn't monotonically better** — a mid-tier model was the slowest and most token-gluttonous despite passing, i.e. worst cost-per-solved.
+- **reasoning + long-context auto-route; smaller-sample answer-path types fall to the heuristic ladder** (below the confidence floor).
 
-**Lesson:** don't reach for the premium model when a cheap/fast one measurably ties it *on your work*. Caveat: an all-100% result measures competence + cost, not the capability ceiling — harder/greenfield tasks discriminate capability. Scope: fixing multi-file changes in tested code.
+**Lesson:** don't reach for the premium model when a cheap/fast one measurably ties it *on your work*. Caveat: saturated task classes measure competence + cost, not the capability ceiling — harder tasks discriminate (Deep prompts on ties until then). Regenerate for your own stack with route-proof.
 
 ### How to invoke externally
 
@@ -105,6 +142,8 @@ For narration / text-to-speech, route to **Gemini TTS** via a `gemini-media` MCP
 - **Steer delivery with prose + punctuation, not bracket tags** — `[pause]`/`[emphasis]`-style tags are inert on this model (unlike ElevenLabs, where they're honored). This is the default TTS lane; fall back to local/system TTS only if Gemini is unavailable.
 
 ### Guardrails (non-negotiable — from the peer-reviewed report)
+
+**This is the guardrail layer — it runs FIRST on every route (step 1 of Operating Modes) and overrides any measured/mode selection.**
 
 - **Style-locked content** (specialized agents with a locked voice, methodology, or brand — domain-expert advisors, brand-voice writers, calibrated analysts) → **keep on the incumbent model, org policy.** Never route out. (See your capability registry's style-locked agent list.)
 - **Trading / execution code** → Claude only + **model-independent controls** (deterministic tests, look-ahead-bias checks, paper-trading, human approval). No model — Claude included — gets unsupervised live-order authority.
@@ -227,6 +266,9 @@ Each routing decision appends one JSON line:
 {
   "ts": "2026-05-24T11:30:00Z",
   "task_type": "file_lookup|summarization|test_writing|exploration|...",
+  "work_type": "coding|reasoning|extraction|grounded-qa|code-review|long-context|style-writing",
+  "route_mode": "frugal|fast|balanced|deep",
+  "route_source": "table|tie-prompt|heuristic-ladder|guardrail",
   "task_summary": "Find all React imports in src/",
   "model_selected": "haiku",
   "model_escalated_to": null,
