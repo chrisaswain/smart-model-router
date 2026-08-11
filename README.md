@@ -9,6 +9,8 @@ Ships the `model-router` skill plus a reference routing table. Design goal: capa
 ```
 skills/model-router/SKILL.md      # /smart-route — operating modes + tiered/multi-provider routing, guardrails
 skills/model-router/routing-table.json  # de-identified measured baseline the operating modes select over
+hooks/routing_gate.py             # UserPromptSubmit hook: injects the routing pick automatically
+install.py                        # links the skill, registers the hook, verifies
 ```
 
 ## Operating modes
@@ -55,16 +57,15 @@ The table refreshes only when its owner reruns the benchmark and promotes the re
 
 ## Install
 
-The router reads a **capability registry** (your models, access paths, and style-locked agents) that is intentionally *not* shipped here — provide your own alongside the skill. Then symlink/junction the skill into your Claude skills dir:
-
 ```bash
-# macOS / Linux
-ln -s "$(pwd)/skills/model-router" ~/.claude/skills/model-router
+git clone https://github.com/chrisaswain/smart-model-router
+cd smart-model-router
+python install.py
 ```
-```powershell
-# Windows (junction, no admin needed)
-cmd /c mklink /J "$env:USERPROFILE\.claude\skills\model-router" "$(Resolve-Path .\skills\model-router)"
-```
+
+Then restart Claude Code. Or just point Claude at this repo and ask it to run `install.py`.
+
+That links the skill and registers the routing hook, which is what makes routing happen automatically as you work rather than only when you ask. Full details, verification, uninstall, and the one setting worth editing are in [INSTALL.md](INSTALL.md).
 
 ## License
 
