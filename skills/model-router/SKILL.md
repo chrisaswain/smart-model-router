@@ -14,7 +14,7 @@ Route tasks to the cheapest/fastest model that can handle them well — across C
 
 ## Operating Modes
 
-The router runs in one of four **operating modes** — an objective for *how* to choose among capable models for a task's work-type. Set per session/task; **Balanced is the default**. Modes select over a measured routing table (`routing-table.json` in this skill's directory — this repo ships a **de-identified reference baseline**; regenerate your own with [route-proof](https://github.com/chrisaswain/route-proof) for your stack). The tiers/ladder below are the fallback when the table is thin.
+The router runs in one of four **operating modes** — an objective for *how* to choose among capable models for a task's work-type. Set per session/task; **Balanced is the default**. Modes select over a measured routing table (`routing-table.json` in this skill's directory — this repo ships a **de-identified reference baseline**; see its `meta` block for coverage, exclusions and sample sizes before relying on it). The tiers/ladder below are the fallback when the table is thin.
 
 | Mode | Optimizes | Rule over the measured table | internal |
 |---|---|---|---|
@@ -141,7 +141,7 @@ For narration / text-to-speech, route to **Gemini TTS** via a `gemini-media` MCP
 - Output is raw PCM (s16le, 24kHz, mono) → convert with `ffmpeg -f s16le -ar 24000 -ac 1 -i voice.pcm voice.wav`.
 - **Steer delivery with prose + punctuation, not bracket tags** — `[pause]`/`[emphasis]`-style tags are inert on this model (unlike ElevenLabs, where they're honored). This is the default TTS lane; fall back to local/system TTS only if Gemini is unavailable.
 
-### Guardrails (non-negotiable — from the peer-reviewed report)
+### Guardrails (non-negotiable)
 
 **This is the guardrail layer — it runs FIRST on every route (step 1 of Operating Modes) and overrides any measured/mode selection.**
 
