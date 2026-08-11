@@ -107,7 +107,7 @@ Beyond the Claude tiers, three external providers are callable locally and can b
 
 **This ladder is the FALLBACK** — used when the measured table has no confident cell for the (work-type, mode) (below the confidence floor, or unmeasured). When the table has a confident cell, the active operating mode's selection over it takes precedence (see **Operating Modes**).
 
-1. **Classify / extract / bulk** → Gemini Flash-Lite (MCP) or Haiku 4.5
+1. **Classify / extract / bulk** → a current Gemini Flash-Lite tier or Haiku 4.5 (Flash-Lite pins retire often; confirm yours is live, see `meta.invocability_warning`)
 2. **Well-specified coding w/ tests** → Grok 4.5 (`grok.exe`) or GPT-5.6 Luna (`codex exec -m gpt-5.6-luna`)
 3. **Default agentic coding / review / planning** → **Claude Sonnet 5**
 4. **Hard multi-file / orchestration / merge-critical** → Claude Opus 4.8
@@ -122,8 +122,8 @@ Vendor "best coder" rankings can invert on *your* actual code. A companion appro
 A **full-matrix reference run** (5 coding task types + answer-path work-types × the model roster) is shipped here as `routing-table.json` (de-identified real metrics — the operating modes select over it). Headline findings:
 
 - **Coding capability saturates** — four Claude tiers and Grok 4.5 all solve 100% — so route by cost/speed. **Fast → Grok 4.5** (~2.5 min/task; the next fastest of the saturated set is 2.6x slower).
-- **Cost cannot rank the whole saturated set.** Among the models that solve 100%, only three have a captured cost (Sonnet 5 cheapest, then Opus 4.8, then Fable 5); Haiku 4.5 and Grok 4.5 have no cost recorded because they ran under flat-rate subscriptions. Absent cost is not zero cost, so treat a Frugal pick between those two as unranked and choose deliberately.
-- **Gemini fails agentic coding** in patch-gen mode (can't do multi-file features) but **aces answer-path** (reasoning / extraction / grounded-QA) — route it to Q&A, not large agentic coding.
+- **Cost cannot rank the whole saturated set.** Among the models that solve 100%, only three have a captured cost (Sonnet 5 cheapest, then Opus 4.8, then Fable 5); Haiku 4.5 and Grok 4.5 have no cost captured for their coding cells (see `meta.cost_basis`; null means not captured, and the reason is not recorded). Absent cost is not zero cost, so treat a Frugal pick between those two as unranked and choose deliberately.
+- **Gemini fails agentic coding** in patch-gen mode (can't do multi-file features) but **scores well on answer-path** (extraction / grounded-QA) — route it to Q&A, not large agentic coding. Treat this as directional: none of the answer-path work-types clear the confidence floor, and the reasoning cells carry validity 0.3 and are not evidence of anything.
 - **coding + long-context auto-route; the other five work-types fall to the heuristic ladder** (below the confidence floor). See `meta.coverage` in `routing-table.json` for the per-work-type counts.
 
 **Lesson:** don't reach for the premium model when a cheap/fast one measurably ties it *on your work*. Caveat: saturated task classes measure competence + cost, not the capability ceiling — harder tasks discriminate (Deep prompts on ties until then). These findings describe one private codebase; measure your own before trusting them.

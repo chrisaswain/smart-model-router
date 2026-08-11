@@ -26,7 +26,7 @@ Modes select over a **measured routing table** (`routing-table.json`), produced 
 
 Cheapest tier that clears the bar; escalate on complexity signals:
 
-1. Bulk / classify / lookups → Gemini Flash-Lite / Claude Haiku 4.5
+1. Bulk / classify / lookups → a current Gemini Flash-Lite tier (pins retire often, confirm yours is live) / Claude Haiku 4.5
 2. Well-specified coding w/ tests → Grok 4.5 / GPT-5.6 Luna (risk-tiered verify)
 3. **Default agentic coding / review / planning → Claude Sonnet 5**
 4. Hard multi-file / orchestration / merge-critical → Claude Opus 4.8
