@@ -43,7 +43,9 @@ Ask Claude anything code-shaped, for example "refactor this module and make the 
 
 ## Configure
 
-**`STYLE_LOCKED` in `hooks/routing_gate.py`** is the one thing worth editing. It lists domains that must never be routed away from your incumbent model regardless of what the table says, for example brand voice, legal, regulated, or clinical work. The shipped list is a generic starting set. Add your own agents, brands, and regulated areas. Set it to `None` to disable the guardrail.
+**`STYLE_LOCKED` in `hooks/routing_gate.py`** is the one thing worth editing. It lists work that must never be routed away from your incumbent model regardless of what the table says. The shipped list is deliberately narrow: brand voice, house style, tone of voice, legal copy/review/opinion, contract drafting, press releases, marketing and ad copy, book blurbs and back cover, ghostwriting, book prose and manuscripts, and "write this in my voice". Add your own agents, brands, and regulated areas. Set it to `None` to disable it entirely.
+
+**Use multi-word phrases when you add to it.** Single words are the trap. An earlier version of this list matched bare `compliance`, `clinical`, `medical`, `patient`, `fiction` and `prose`, which silently suppressed routing on ordinary prompts like "add a compliance check to the CI pipeline" and "be patient, first run the failing tests". A guardrail that fires on normal work is worse than no guardrail, because it trains you to turn it off.
 
 Everything else works out of the box.
 

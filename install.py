@@ -131,11 +131,16 @@ def main():
                 SKILL_DST.unlink()
                 print(f"  skill: unlinked {SKILL_DST}")
             elif os.name == "nt" and SKILL_DST.is_dir():
-                # rmdir removes a junction; on a real populated copy it raises,
-                # which is the signal that this is the user's data, not our link.
-                # (os.path.isjunction would be cleaner but is 3.12+.)
-                SKILL_DST.rmdir()
-                print(f"  skill: unlinked {SKILL_DST}")
+                # rmdir removes a junction; on a real populated copy it raises
+                # WinError 145, which is the signal that this is the user's data
+                # and not our link. (os.path.isjunction is cleaner but is 3.12+,
+                # and INSTALL.md promises 3.9+.)
+                try:
+                    SKILL_DST.rmdir()
+                    print(f"  skill: unlinked {SKILL_DST}")
+                except OSError:
+                    print(f"  skill: {SKILL_DST} is a real copy, not a link. "
+                          "Delete it by hand if you want it gone.")
             elif SKILL_DST.exists():
                 print(f"  skill: {SKILL_DST} is a real copy, not a link. "
                       "Delete it by hand if you want it gone.")

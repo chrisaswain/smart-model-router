@@ -73,7 +73,11 @@ OPT_OUT = re.compile(
 # guardrail that fires on normal work is worse than none, because it trains people
 # to turn it off.
 STYLE_LOCKED = re.compile(
-    r"\b(brand voice|house style|tone of voice|in (my|our) voice|"
+    # "in my voice" needs a writing verb in front of it. Bare, it matches
+    # "fix the dead mic handling in my voice dictation app" and every other
+    # voice-app, voice-chat or voice-bot prompt.
+    r"\b(brand voice|house style|tone of voice|"
+    r"(?:write|rewrite|draft|edit|reword)\w*[^.]{0,40}in (?:my|our)(?: own)? voice|"
     r"legal (copy|review|opinion)|contract (drafting|language)|"
     r"press release|marketing copy|ad copy|book blurb|back cover|"
     r"ghostwrit\w*|book (prose|manuscript))\b",
