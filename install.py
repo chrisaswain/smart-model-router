@@ -39,7 +39,9 @@ def link_skill():
         print(f"  skill: linked {SKILL_DST} -> {SKILL_SRC}")
     except (subprocess.CalledProcessError, OSError):
         shutil.copytree(SKILL_SRC, SKILL_DST)
-        print(f"  skill: copied to {SKILL_DST} (link failed; re-run install to update)")
+        print(f"  skill: COPIED to {SKILL_DST} (linking failed). This is a snapshot: "
+              "`git pull` here will NOT update it. Delete that directory and re-run "
+              "install.py to pick up a newer table.")
 
 
 def load_settings():
@@ -51,7 +53,14 @@ def load_settings():
 
 def save_settings(data):
     if SETTINGS.exists():
+        # Never overwrite an existing backup: the pristine pre-install copy is the
+        # one worth keeping, and a second run would replace it with post-install
+        # state, i.e. destroy the only thing the backup was for.
         backup = SETTINGS.with_suffix(".json.bak")
+        n = 0
+        while backup.exists():
+            n += 1
+            backup = SETTINGS.with_suffix(f".json.bak{n}")
         shutil.copy2(SETTINGS, backup)
         print(f"  settings: backed up to {backup}")
     SETTINGS.parent.mkdir(parents=True, exist_ok=True)
@@ -67,9 +76,15 @@ def register_hook(remove=False):
     def is_ours(h):
         return isinstance(h, dict) and "routing_gate.py" in str(h.get("command", ""))
 
+    # Prune only groups WE emptied. A group the user already had with an empty
+    # hooks list is their config, not our litter, and deleting it is data loss.
+    kept = []
     for g in groups:
-        g["hooks"] = [h for h in g.get("hooks", []) if not is_ours(h)]
-    groups[:] = [g for g in groups if g.get("hooks")]
+        had = list(g.get("hooks", []))
+        g["hooks"] = [h for h in had if not is_ours(h)]
+        if g["hooks"] or not had:
+            kept.append(g)
+    groups[:] = kept
 
     if not remove:
         entry = {"type": "command", "command": COMMAND, "timeout": 10}
@@ -107,12 +122,25 @@ def main():
     if args.uninstall:
         print("Uninstalling smart-model-router:")
         register_hook(remove=True)
-        if SKILL_DST.is_symlink() or (os.name == "nt" and SKILL_DST.is_dir()):
-            try:
+        # POSIX symlinks need unlink(); rmdir() raises NotADirectoryError on them.
+        # Windows junctions are directories and need rmdir(). Removing a link never
+        # touches the target, but a real directory here is a copytree fallback and
+        # is the user's to delete.
+        try:
+            if SKILL_DST.is_symlink():
+                SKILL_DST.unlink()
+                print(f"  skill: unlinked {SKILL_DST}")
+            elif os.name == "nt" and SKILL_DST.is_dir():
+                # rmdir removes a junction; on a real populated copy it raises,
+                # which is the signal that this is the user's data, not our link.
+                # (os.path.isjunction would be cleaner but is 3.12+.)
                 SKILL_DST.rmdir()
                 print(f"  skill: unlinked {SKILL_DST}")
-            except OSError:
-                print(f"  skill: leave {SKILL_DST} in place (not a link), remove by hand")
+            elif SKILL_DST.exists():
+                print(f"  skill: {SKILL_DST} is a real copy, not a link. "
+                      "Delete it by hand if you want it gone.")
+        except OSError as exc:
+            print(f"  skill: could not remove {SKILL_DST} ({exc}); remove by hand")
         print("\nDone. Restart Claude Code.")
         return
 

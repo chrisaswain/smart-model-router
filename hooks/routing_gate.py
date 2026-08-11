@@ -63,15 +63,20 @@ OPT_OUT = re.compile(
 
 # EDIT THIS for your org. These are domains where a locked voice, methodology or
 # brand matters more than any measured score, so the gate refuses to route them
-# out no matter what the table says. The defaults below are a generic starting
-# set; add your own agents, brands and regulated areas. To disable the guardrail
-# entirely, set STYLE_LOCKED = None.
+# out no matter what the table says. To disable the guardrail, set it to None.
+#
+# Use MULTI-WORD phrases only. Single words like "compliance", "clinical",
+# "medical", "patient", "fiction" or "prose" read as style-locked in isolation but
+# are ordinary vocabulary in a coding prompt: "add a compliance check to the CI
+# pipeline" and "be patient, first run the failing tests" both matched an earlier
+# single-word version of this list and had their routing silently suppressed. A
+# guardrail that fires on normal work is worse than none, because it trains people
+# to turn it off.
 STYLE_LOCKED = re.compile(
-    r"\b(brand voice|house style|style ?guide|tone of voice|"
-    r"legal (copy|review|opinion)|contract (drafting|language)|compliance|regulated|"
-    r"medical|clinical|patient|"
-    r"press release|marketing copy|ad copy|blurb|back cover|"
-    r"ghostwrit|book (prose|manuscript)|manuscript|\bnovel\b|fiction|\bprose\b)\b",
+    r"\b(brand voice|house style|tone of voice|in (my|our) voice|"
+    r"legal (copy|review|opinion)|contract (drafting|language)|"
+    r"press release|marketing copy|ad copy|book blurb|back cover|"
+    r"ghostwrit\w*|book (prose|manuscript))\b",
     I,
 )
 
@@ -179,7 +184,7 @@ CODE_IMPERATIVE = re.compile(r"\b(write|implement|build|create|refactor|add) (a 
 
 
 def classify(instr, long_by_length):
-    if STYLE_LOCKED.search(instr):
+    if STYLE_LOCKED and STYLE_LOCKED.search(instr):
         return "style-locked"
     if REVIEW.search(instr):
         return "code-review"
@@ -272,8 +277,10 @@ def msg_measured(work_type, cands):
         cost_note = "flat-rate covered"
     else:
         cost_note = f"~${min_cost:.3f}/solved"
-    frugal_line = f"Frugal ({cost_note}): {', '.join(frugal)}" + (
-        " [MEASURED TIE]." if len(frugal) > 1 else ".")
+    frugal_tie = ""
+    if len(frugal) > 1:
+        frugal_tie = " [UNRANKED: cost not captured]." if uncosted else " [MEASURED TIE]."
+    frugal_line = f"Frugal ({cost_note}): {', '.join(frugal)}" + (frugal_tie or ".")
 
     # Fast = lowest median wall-time, tie within FAST_TIE_FRAC.
     walls = [(c["model"], c["median_wall_ms"]) for c in cands if c.get("median_wall_ms")]
@@ -288,9 +295,15 @@ def msg_measured(work_type, cands):
     # do not overstate the measured pick. (Fix: PR#3 review, major 2.)
     elig = [c for c in cands if (c.get("ci_low") or 0.0) >= BAR]
     if elig:
-        bset, _, _ = _cheapest_set(elig)
-        bal_line = f" Balanced (default): {', '.join(bset)} (clears ci_low>={BAR})" + (
-            " [MEASURED TIE]." if len(bset) > 1 else ".")
+        bset, _, bal_uncosted = _cheapest_set(elig)
+        # A set that is only "tied" because nobody's cost was captured is not a
+        # measured tie. Calling it one invites the reader to trust a number that
+        # does not exist.
+        tie = ""
+        if len(bset) > 1:
+            tie = " [UNRANKED: cost not captured]." if bal_uncosted else " [MEASURED TIE]."
+        bal_line = (f" Balanced (default): {', '.join(bset)} "
+                    f"(clears ci_low>={BAR})" + (tie or "."))
     else:
         bal_line = (
             f" Balanced (default): NO cell clears ci_low>={BAR} (small-N CIs), so Balanced "

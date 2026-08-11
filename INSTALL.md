@@ -11,7 +11,9 @@ The hook is the part that makes routing passive. Without it the skill still work
 
 Paste this to Claude Code:
 
-> Clone https://github.com/chrisaswain/smart-model-router and run its install.py, then show me the output.
+> Clone https://github.com/chrisaswain/smart-model-router and run its install.py, then show me the output. If it fails, show me the error and stop; do not edit my settings.json by hand.
+
+That last sentence matters. `install.py` deliberately refuses to write anything if your `settings.json` is malformed, and leaves the file byte-identical. An agent that decides to "repair" it for you can lose configuration the installer was protecting.
 
 Or do it yourself:
 
