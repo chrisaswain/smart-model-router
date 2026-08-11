@@ -121,12 +121,12 @@ Vendor "best coder" rankings can invert on *your* actual code. A companion appro
 
 A **full-matrix reference run** (5 coding task types + answer-path work-types × the model roster) is shipped here as `routing-table.json` (de-identified real metrics — the operating modes select over it). Headline findings:
 
-- **Coding capability saturates** — several Claude tiers and both Grok models all solve 100% — so route by cost/speed. **Fast → the fastest coder** (a Grok tier, ~2 min/task); Frugal/Balanced tie among the subscription-free models → prompt the user to pick.
+- **Coding capability saturates** — four Claude tiers and Grok 4.5 all solve 100% — so route by cost/speed. **Fast → Grok 4.5** (~2.5 min/task; the next fastest of the saturated set is 2.6x slower).
+- **Cost cannot rank the whole saturated set.** Among the models that solve 100%, only three have a captured cost (Sonnet 5 cheapest, then Opus 4.8, then Fable 5); Haiku 4.5 and Grok 4.5 have no cost recorded because they ran under flat-rate subscriptions. Absent cost is not zero cost, so treat a Frugal pick between those two as unranked and choose deliberately.
 - **Gemini fails agentic coding** in patch-gen mode (can't do multi-file features) but **aces answer-path** (reasoning / extraction / grounded-QA) — route it to Q&A, not large agentic coding.
-- **Cheaper isn't monotonically worse and pricier isn't monotonically better** — a mid-tier model was the slowest and most token-gluttonous despite passing, i.e. worst cost-per-solved.
-- **reasoning + long-context auto-route; smaller-sample answer-path types fall to the heuristic ladder** (below the confidence floor).
+- **coding + long-context auto-route; the other five work-types fall to the heuristic ladder** (below the confidence floor). See `meta.coverage` in `routing-table.json` for the per-work-type counts.
 
-**Lesson:** don't reach for the premium model when a cheap/fast one measurably ties it *on your work*. Caveat: saturated task classes measure competence + cost, not the capability ceiling — harder tasks discriminate (Deep prompts on ties until then). Regenerate for your own stack with route-proof.
+**Lesson:** don't reach for the premium model when a cheap/fast one measurably ties it *on your work*. Caveat: saturated task classes measure competence + cost, not the capability ceiling — harder tasks discriminate (Deep prompts on ties until then). These findings describe one private codebase; measure your own before trusting them.
 
 ### How to invoke externally
 
@@ -417,7 +417,7 @@ This is where the biggest speed + cost wins happen. Look for opportunities to pa
 
 ## Experimentation Decision Points
 
-When `global_experiment_mode` is enabled in `C:\Dev\ai\logs\ai-router\preferences.json`:
+When `global_experiment_mode` is enabled in `logs/ai-router/preferences.json`:
 
 ### Tier classification prompt
 
@@ -447,7 +447,7 @@ After the delegated agent returns output, prompt:
 
 ### Experiment logging
 
-Log all experiments to `C:\Dev\ai\logs\ai-router\experiments.jsonl` with `router: "smart-route"`.
+Log all experiments to `logs/ai-router/experiments.jsonl` with `router: "smart-route"`.
 
 When experimentation is OFF (default), auto-delegation works as before — no decision prompts. The existing auto-delegate behavior (classify + delegate silently) remains the default to preserve speed.
 

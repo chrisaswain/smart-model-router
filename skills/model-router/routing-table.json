@@ -2,7 +2,7 @@
   "meta": {
     "source": "route-proof de-identified reference baseline",
     "date": "2026-07-31",
-    "note": "A starting point, not a leaderboard. Regenerate your own with route-proof for your stack and your definition of done.",
+    "note": "A starting point, not a leaderboard. These numbers describe one person's codebase and one person's definition of done. Measure your own work before you trust them. The benchmark that produced this file (route-proof) is not yet public.",
     "provenance": "Real measured metrics from one person's benchmark run, identity removed (no repo names, task ids, or paths). Coding and code-review tasks were harvested from the git history of a single private Python codebase and scored by that codebase's own tests. Absolute numbers transfer weakly; the selection semantics and the cell schema are the transferable part.",
     "sample_size": "n per cell is 2 to 5 tasks. The confidence intervals are wide because the underlying uncertainty is real, not because of a formatting choice.",
     "floor": {
