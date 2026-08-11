@@ -1,0 +1,58 @@
+# Install
+
+Two pieces get installed:
+
+- **the skill**, linked into `~/.claude/skills/model-router`, so you can ask for a routing recommendation on demand
+- **the hook**, registered as a `UserPromptSubmit` hook, so routing suggestions are injected automatically as you work
+
+The hook is the part that makes routing passive. Without it the skill still works, you just have to ask.
+
+## Point Claude at it
+
+Paste this to Claude Code:
+
+> Clone https://github.com/chrisaswain/smart-model-router and run its install.py, then show me the output. If it fails, show me the error and stop; do not edit my settings.json by hand.
+
+That last sentence matters. `install.py` deliberately refuses to write anything if your `settings.json` is malformed, and leaves the file byte-identical. An agent that decides to "repair" it for you can lose configuration the installer was protecting.
+
+Or do it yourself:
+
+```bash
+git clone https://github.com/chrisaswain/smart-model-router
+cd smart-model-router
+python install.py
+```
+
+**Restart Claude Code afterwards.** The hook is read at startup.
+
+Requires Python 3.9+ and Claude Code. No other dependencies, the hook is stdlib only.
+
+## What install.py does
+
+1. Links `skills/model-router` into `~/.claude/skills/` (junction on Windows, symlink elsewhere, copy if both fail).
+2. Adds one `UserPromptSubmit` entry to `~/.claude/settings.json` pointing at `hooks/routing_gate.py`.
+3. Runs the hook once against a sample coding prompt and prints what it injected, so you can see it working before you trust it.
+
+It backs up `settings.json` first, appends rather than overwrites, and is idempotent. Existing hooks and unrelated settings are left alone. Keep the cloned directory where it is; the settings entry points at it by absolute path.
+
+To remove everything: `python install.py --uninstall`
+
+## Verify
+
+Ask Claude anything code-shaped, for example "refactor this module and make the tests pass". You should see a `ROUTING GATE` line in the context. If you see nothing, the hook is not firing: confirm you restarted Claude Code, and run `python hooks/routing_gate.py` with `{"prompt":"refactor the auth module"}` on stdin to check it produces JSON.
+
+## Configure
+
+**`STYLE_LOCKED` in `hooks/routing_gate.py`** is the one thing worth editing. It lists work that must never be routed away from your incumbent model regardless of what the table says. The shipped list is deliberately narrow: brand voice, house style, tone of voice, legal copy/review/opinion, contract drafting, press releases, marketing and ad copy, book blurbs and back cover, ghostwriting, book prose and manuscripts, and "write this in my voice". Add your own agents, brands, and regulated areas. Set it to `None` to disable it entirely.
+
+**Use multi-word phrases when you add to it.** Single words are the trap. An earlier version of this list matched bare `compliance`, `clinical`, `medical`, `patient`, `fiction` and `prose`, which silently suppressed routing on ordinary prompts like "add a compliance check to the CI pipeline" and "be patient, first run the failing tests". A guardrail that fires on normal work is worse than no guardrail, because it trains you to turn it off.
+
+Everything else works out of the box.
+
+## What to expect
+
+**Most prompts will fall back to the heuristic ladder.** Only `coding` and `long-context` currently have measured cells clearing the confidence floor, so the other five work-types will say "no measured cell above the confidence floor" and suggest the ladder instead. That is the floor doing its job, not a malfunction. See `meta.coverage` in `routing-table.json`.
+
+**Named models are suggestions, not requirements.** The ladder names Grok, Gemini, and GPT tiers alongside Claude. If you do not have those CLIs installed and authenticated, ignore those suggestions; the injected text says so too. Nothing breaks, you just stay on Claude.
+
+**The numbers are one person's measurements.** Read "What the table is, and what it is not" in the README before you weight them heavily. Short version: n is 2 to 5 tasks per cell, only the coding cells come from a real codebase, and the confidence floor exists precisely because the data is thin.

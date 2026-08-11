@@ -2,7 +2,7 @@
 
 Route tasks to the cheapest/fastest model that can handle them well — across Claude tiers **and** external providers (OpenAI Codex/GPT-5.6, SpaceXAI Grok, Google Gemini). **Claude Sonnet 5 is the default working tier**; the current session (Opus) classifies work, delegates simpler tasks down (Haiku), escalates hard tasks up (Opus 4.8 → Fable 5), and dispatches specific jobs to external providers via the Multi-Provider Lane. Every routing decision is logged for periodic self-improvement review.
 
-> **Model roster (2026-07):** Claude Fable 5 / Opus 4.8 / Sonnet 5 / Haiku 4.5 · GPT-5.6 Sol/Terra/Luna · Grok 4.5 · Gemini 3.1 Pro / 3 Flash / Flash-Lite. Full capability rows, access paths, and guard rails are in the `ai-registry` skill. Rebalanced 2026-07-11 after a four-model peer review.
+> **Model roster (2026-07):** Claude Fable 5 / Opus 4.8 / Sonnet 5 / Haiku 4.5 · GPT-5.6 Sol/Terra/Luna · Grok 4.5 · Gemini 3.1 Pro / 3 Flash / Flash-Lite. Rebalanced 2026-07-11 after a four-model peer review. Not every tier will be callable from your machine; ignore any provider you have not installed.
 
 ## Invocation
 
@@ -101,7 +101,7 @@ Cost: ~$3/M input, ~$15/M output (intro $2/$10 through Aug 31, 2026) — **~1.7x
 
 ## Multi-Provider Lane (external CLIs + Gemini) — added 2026-07-11
 
-Beyond the Claude tiers, three external providers are callable locally and can be routed for specific jobs. See `ai-registry` for full capability rows. **Log each with a `provider` field.**
+Beyond the Claude tiers, three external providers can be routed for specific jobs if you have their CLIs installed and authenticated. **Log each with a `provider` field.**
 
 ### The rebalanced default ladder
 
@@ -145,7 +145,7 @@ For narration / text-to-speech, route to **Gemini TTS** via a `gemini-media` MCP
 
 **This is the guardrail layer — it runs FIRST on every route (step 1 of Operating Modes) and overrides any measured/mode selection.**
 
-- **Style-locked content** (specialized agents with a locked voice, methodology, or brand — domain-expert advisors, brand-voice writers, calibrated analysts) → **keep on the incumbent model, org policy.** Never route out. (See your capability registry's style-locked agent list.)
+- **Style-locked content** (specialized agents with a locked voice, methodology, or brand — domain-expert advisors, brand-voice writers, calibrated analysts) → **keep on the incumbent model, org policy.** Never route out. (Configure the match list in `hooks/routing_gate.py` → `STYLE_LOCKED`.)
 - **Trading / execution code** — **authorship is not provider-restricted by default:** any model may write trading code (routed by the normal mode/table logic), on the principle that an independent adversarial review + verification contracts catch defects regardless of author. Orgs with IP-retention constraints may optionally pin it to the incumbent. **The execution-safety floor is always retained and non-negotiable:** model-independent controls (deterministic tests, look-ahead-bias checks, paper-trading, human approval), and no model gets unsupervised live-order authority.
 - **Grok output → risk-tiered verify:** route money/security/prod paths through a Claude gate; trust tests for throwaway scripts. Blanket "always verify" pays two models and erases the cost win.
 - **Sandbox EVERY autonomous agent** (Sol, Grok, Claude) — no unsupervised network + secrets. METR flagged Sol for in-scaffold reward-hacking → keep Sol off gating CI specifically.
