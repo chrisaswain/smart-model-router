@@ -3,7 +3,7 @@
     "source": "route-proof de-identified reference baseline",
     "date": "2026-07-31",
     "note": "A starting point, not a leaderboard. These numbers describe one person's codebase and one person's definition of done. Measure your own work before you trust them. The benchmark that produced this file (route-proof) is not yet public.",
-    "provenance": "Real measured metrics from one person's benchmark run, identity removed (no repo names, task ids, or paths). Coding and code-review tasks were harvested from the git history of a single private Python codebase and scored by that codebase's own tests. Absolute numbers transfer weakly; the selection semantics and the cell schema are the transferable part.",
+    "provenance": "Real measured metrics from one person's benchmark run, identity removed (no repo names, task ids, or paths). Only the coding cells come from a private codebase: 5 commits harvested from its git history, graded by whether that codebase's own tests pass. Every other work-type ran 2 or 3 tasks from the benchmark's shipped default set, each with its own scorer (code-review by planted-defect recall, style-writing by an LLM judge, and so on), not by any test suite. Absolute numbers transfer weakly; the selection semantics and the cell schema are the transferable part.",
     "sample_size": "n per cell is 2 to 5 tasks. The confidence intervals are wide because the underlying uncertainty is real, not because of a formatting choice.",
     "floor": {
       "pass_at_k_bar": 0.5,
